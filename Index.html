@@ -1,0 +1,252 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TriviaGame</title>
+<!--     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script> -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="assets/css/style.css"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+<body style="background-image: url('https://vignette.wikia.nocookie.net/cardgamedatabase/images/b/b5/Stereotypical-Board-Game-from-the-90s-Girl-Talk.jpg/revision/latest?cb=20140516214145')">
+    <!-- <body> -->
+    <div class="container">
+      <div class="jumbotron">
+        <h1>Trivia Game</h1>      
+        <h4>90's Trivia</h4>
+    </div>
+    <div id="timer"></div>
+    <div id="trivia"></div>
+    <div class="content">
+        <button id="startGame">Start Game</button>
+        <div id="time-left"></div>
+        <div id="quiz"></div>
+        <div id="results"></div>
+    </div> 
+    
+</body>
+<script type="text/javascript" src="assets/javascript/app.js"></script>
+</html>
+
+
+<h1>Trivia Game</h1>
+
+<p>90's Trivia.</p>
+
+<script> 
+
+function Timer(gameLength) {
+  this.timeLeft = gameLength;
+  this.done = null;
+  this.reset = function() { 
+    clearInterval(timer); 
+    this.timeLeft = 0;
+    document.querySelector("#timer").innerHTML = this.render();
+  };
+  this.render = function() {
+    return "<div>Time Left: " + this.timeLeft + "</div><br>";
+  };
+  var that = this;
+  var countdown = function() {
+    that.timeLeft--;
+    document.querySelector("#timer").innerHTML = that.render();
+    if (that.timeLeft === 0) {  // game over
+      that.reset();
+      that.done = true;
+      document.dispatchEvent(new Event('timerDone'));
+    }
+  };
+  var timer = setInterval(countdown, 1000);
+}
+struct = {
+      "Which movie won the 1998 Oscar for Best Original Screenplay?": {
+        "choices": [
+          "Titanic",
+          "Good Will Hunting",
+          "Armageddon",
+        ],
+        "answer": "Titanic"
+      },
+      "Which 1998 album sold more records?": {
+        "choices": [
+          "Jagged Little Pill",
+          "Spice",
+          "Tragic Kingdom",
+        ],
+        "answer": "Jagged Little Pill"
+      },
+      "Who was NOT a member of the Mickey Mouse Club?": {
+        "choices": [
+          "Keri Russell",
+          "Jessica Simpson",
+          "Justin Timberlake",
+        ],
+        "answer": "Jessica Simpson"
+      },
+        "What complication was Y2K based on?": {
+        "choices": [
+          "At midnight, all computers would reset to the year "0000,
+          "Computers would interpret the year "2000" as "1900."",
+          "The world would end",
+        ],
+        "answer": "At midnight, all computers would reset to the year "0000,
+      },
+        "Which band formed first?": {
+        "choices": [
+          "Backstreet Boys",
+          "NSync",
+        ],
+        "answer": "Backstreet Boys"
+      },
+        "Rocko, of the Nickelodeon animated series, Rocko's Modern Life, was what kind of animal?" [
+        "choices": [
+          "A wallaby",
+          "A mixed breed dog",
+          "A dinosaur",
+        ],
+        "answer": "A mixed breed dog"
+      },
+        "Which film was the first-ever animated movie to be nominated for an Academy Award for Best Picture?": {
+        "choices": [
+          "Beauty and the Beast",
+          "Aladdin",
+          "The Lion King",
+        ],
+        "answer": "Beauty and the Beast"
+      },
+        "Who sang the Friends theme song?": {
+        "choices": [
+          "The Rembrandts",
+          "Gin Blossoms",
+        ],
+        "answer": "The Rembrandts"
+      }
+    };
+function Answer(content, name) {
+  this.content = content || "";
+  this.name = name;
+  this.render = function() {
+    return "<input type=radio name=" + this.name  + " value='" + this.content + "'>" + "&nbsp;" + this.content + "<br>";
+  };
+}
+function Question(content, choices) {
+  this.id = generateUniqueId("question");
+  this.content = content;
+  this.answeredCorrectly = null;  
+  this.serialize = function() {
+    var answerID = this.id + "-answer";
+    var selectedAnswer = document.querySelector("#" + this.id).elements[answerID].value;
+    var result = {}; result[this.content] = {"answer": selectedAnswer, "id": this.id};
+    return result;
+  };
+  this.disableAnswering = function() {
+    var radioButtons = document.querySelectorAll("input[name=" + this.id + "-answer]");
+    radioButtons.forEach(function(radioButton) { radioButton.disabled = true; });
+  };
+  this.render = function() {
+    var inputs = this.answers.map(function(answer) { return answer.render(); });
+    return "<form id=" + this.id + ">" +
+             this.content + "<br>" + 
+             inputs.join("") + 
+           "</form>";
+  };
+  var that = this;
+  this.answers = choices.map(function(choice) { return new Answer(choice, that.id + "-answer"); });
+}
+function Trivia(gameLength) {
+  this.timer = new Timer(gameLength);
+  this.questions = Object.keys(struct).map(function(question) {
+    var choices = struct[question].choices;
+    return new Question(question, choices);
+  }); 
+  this.serialize = function() {
+    var serializedQuestions = this.questions.map(function(question) { return question.serialize(); });
+    return serializedQuestions.reduce(function(acc, obj) {
+      for (var key in obj) { acc[key] = obj[key].answer; }
+      return acc;
+    }, {});
+  };
+  this.disableAllAnswering = function() {
+    this.questions.forEach(function(question, index) { question.disableAnswering(); });
+    document.querySelector("#questions button").disabled = true;
+  };
+  this.checkUserAnswers = function() {
+    var questions = that.questions;
+    var rubric = getRubric();
+    var userAnswers = questions.map(function(question) { 
+      return question.serialize(); 
+    }).reduce(function(acc, obj) {
+      for (var key in obj) { acc[key] = obj[key]; }
+      return acc;
+    }, {});
+    Object.keys(rubric).forEach(function(key, index) {
+      question = questions.filter(function(question) { return question.id == userAnswers[key].id; }).pop();
+      if (rubric[key] == userAnswers[key].answer) {  // win condition
+        question.answeredCorrectly = true;
+      } else if (userAnswers[key].answer !== "") {
+        question.answeredCorrectly = false;
+      }
+    });
+    return questions.map(function(question) { return question.answeredCorrectly; });
+  };
+  this.calculateScore = function() {
+    // Do something more fancy in the future
+    return this.correct();
+  };
+  this.correct = function() {
+    return this.questions.filter(function(question) { return question.answeredCorrectly === true; }).length;
+  };
+  this.incorrect = function() {
+    return this.questions.filter(function(question) { return question.answeredCorrectly === false; }).length;
+  };
+  this.unanswered = function() {
+    return this.questions.filter(function(question) { return question.answeredCorrectly === null; }).length;
+  };
+  this.render = function() {
+    var serialize = this.serialize;
+    var forms = this.questions.map(function(question) { return question.render(); });
+    return "<div id=questions>" + 
+             forms.join("<br>") + 
+             "<br><button>" + "Final Answer" + "</button>" +
+           "</div>";
+  };
+  var that = this;
+  var getRubric = function() {
+    var result = {};
+    Object.keys(struct).forEach(function(key, index) {
+      result[key] = struct[key].answer;
+    });
+    return result;
+  };
+  var gameOver = function() {
+    that.timer.reset();
+    that.checkUserAnswers();
+    that.disableAllAnswering();
+    console.log(that.serialize(), that.calculateScore());
+    alert(
+      "Correct: " + that.correct() + "\n" +
+      "Incorrect: " + that.incorrect() + "\n" +
+      "Unanswered: " + that.unanswered() 
+    );
+  };
+  document.addEventListener("DOMContentLoaded", function() {
+    document.querySelector("#timer").innerHTML = that.timer.render();
+    document.querySelector("#trivia").innerHTML = that.render();
+    document.querySelector("#questions button").onclick = gameOver;  // game over
+  });
+  document.addEventListener("timerDone", gameOver);
+}
+var generateUniqueId = function(prefix) {
+  if (prefix === undefined) {
+    return Math.random().toString(36).substr(2, 16);
+  } else {
+    return prefix + "-" + Math.random().toString(36).substr(2, 16);
+  }
+};
+var trivia = new Trivia(10);
+// $(document).ready(function(){
+//     $("startGame").click(function(){
+//         $("trivia").load(new Trivia(10));
+//     });
+// });-
